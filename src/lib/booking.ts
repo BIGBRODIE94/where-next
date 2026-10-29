@@ -1,7 +1,30 @@
+import { resolveAirport } from '../data/airports'
 import type { Country } from '../data/countries'
+import { GATEWAYS } from '../data/gateways'
 
 function q(value: string): string {
   return encodeURIComponent(value)
+}
+
+function compactDate(iso: string): string {
+  return iso.replaceAll('-', '')
+}
+
+function slug(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+export function originCode(origin: string): string | undefined {
+  return resolveAirport(origin)?.iata
+}
+
+export function destinationCode(country: Country): string {
+  return GATEWAYS[country.code] ?? country.capital
 }
 
 export function googleFlightsUrl(
@@ -10,34 +33,49 @@ export function googleFlightsUrl(
   depart: string,
   returnDate: string,
 ): string {
-  const destination = `${country.capital}, ${country.name}`
-  const query = origin.trim()
-    ? `Round trip flights from ${origin.trim()} to ${destination} on ${depart} through ${returnDate}`
-    : `Round trip flights to ${destination} on ${depart} through ${returnDate}`
-  return `https://www.google.com/travel/flights?hl=en&curr=USD&q=${q(query)}`
+  const from = originCode(origin)
+  const to = destinationCode(country)
+  if (from) {
+    return `https://www.google.com/travel/flights?hl=en&curr=USD#flt=${from}.${to}.${depart}*${to}.${from}.${returnDate}`
+  }
+  return `https://www.google.com/travel/flights?hl=en&curr=USD&q=${q(`Round trip to ${to} on ${depart} through ${returnDate}`)}`
 }
 
-export function googleExploreUrl(origin: string, country: Country): string {
-  const query = origin.trim()
-    ? `Flights from ${origin.trim()} to ${country.name}`
-    : `Flights to ${country.name}`
-  return `https://www.google.com/travel/explore?hl=en&q=${q(query)}`
+export function cheapestMonthUrl(origin: string, country: Country): string {
+  const from = originCode(origin)
+  const to = destinationCode(country).toLowerCase()
+  if (from) {
+    return `https://www.skyscanner.com/transport/flights/${from.toLowerCase()}/${to}/?adultsv2=1&cabinclass=economy&rtn=1`
+  }
+  return `https://www.skyscanner.com/transport/flights/${to}/?adultsv2=1&cabinclass=economy&rtn=1`
 }
 
-export function googleHotelsUrl(
+export function pricelineHotelsUrl(
+  country: Country,
+  depart: string,
+  returnDate: string,
+): string {
+  const place = slug(`${country.capital} ${country.name}`)
+  return `https://www.priceline.com/relax/at/${place}/from/${compactDate(depart)}/to/${compactDate(returnDate)}/rooms/1`
+}
+
+export function bookingHotelsUrl(
   country: Country,
   depart: string,
   returnDate: string,
 ): string {
   const place = `${country.capital}, ${country.name}`
-  return `https://www.google.com/travel/hotels/${q(place)}?hl=en&q=${q(`Hotels in ${place}`)}&checkin=${q(depart)}&checkout=${q(returnDate)}`
+  return `https://www.booking.com/searchresults.html?ss=${q(place)}&checkin=${depart}&checkout=${returnDate}&group_adults=2&no_rooms=1&selected_currency=USD&order=price`
 }
 
-export function googleCarsUrl(
+export function kayakCarsUrl(
   country: Country,
   depart: string,
   returnDate: string,
 ): string {
-  const place = `${country.capital}, ${country.name}`
-  return `https://www.google.com/travel/cars?hl=en&q=${q(`Car rental in ${place} from ${depart} to ${returnDate}`)}`
+  const to = destinationCode(country)
+  if (to.length === 3) {
+    return `https://www.kayak.com/cars/${to}/${depart}/${returnDate}`
+  }
+  return `https://www.kayak.com/cars/${q(`${country.capital}, ${country.name}`)}/${depart}/${returnDate}`
 }

@@ -1,9 +1,13 @@
-import { ORIGIN_CITIES, flagEmoji, type Country } from '../data/countries'
+import { AirportPicker } from './AirportPicker'
+import { flagEmoji, type Country } from '../data/countries'
 import {
-  googleCarsUrl,
-  googleExploreUrl,
+  bookingHotelsUrl,
+  cheapestMonthUrl,
+  destinationCode,
   googleFlightsUrl,
-  googleHotelsUrl,
+  kayakCarsUrl,
+  originCode,
+  pricelineHotelsUrl,
 } from '../lib/booking'
 
 type TripPlannerProps = {
@@ -25,10 +29,13 @@ export function TripPlanner({
   onDepartChange,
   onReturnChange,
 }: TripPlannerProps) {
+  const from = originCode(origin)
+  const to = destinationCode(country)
   const flights = googleFlightsUrl(origin, country, depart, returnDate)
-  const explore = googleExploreUrl(origin, country)
-  const hotels = googleHotelsUrl(country, depart, returnDate)
-  const cars = googleCarsUrl(country, depart, returnDate)
+  const explore = cheapestMonthUrl(origin, country)
+  const priceline = pricelineHotelsUrl(country, depart, returnDate)
+  const booking = bookingHotelsUrl(country, depart, returnDate)
+  const cars = kayakCarsUrl(country, depart, returnDate)
 
   return (
     <section className="planner" aria-labelledby="planner-heading">
@@ -38,29 +45,16 @@ export function TripPlanner({
         {country.name}
       </h2>
       <p className="planner-meta">
-        {country.capital} · {country.region}
+        {country.capital} · {country.region} · {to}
       </p>
       <p className="planner-copy">
-        We will open Google Flights with this round trip filled in. Sort by price
-        to grab the cheapest fare, then book a hotel and rental car the same way.
+        Pick your airport and dates, then open a search that is already filled in. Hotels sort
+        cheap first on Priceline and Booking.com. Cars open on Kayak. The calendar shows the
+        cheapest month on Skyscanner.
       </p>
 
       <form className="planner-form" onSubmit={(event) => event.preventDefault()}>
-        <label>
-          Flying from
-          <input
-            list="origin-cities"
-            value={origin}
-            onChange={(event) => onOriginChange(event.target.value)}
-            placeholder="New York"
-            autoComplete="off"
-          />
-        </label>
-        <datalist id="origin-cities">
-          {ORIGIN_CITIES.map((city) => (
-            <option key={city} value={city} />
-          ))}
-        </datalist>
+        <AirportPicker value={origin} onChange={onOriginChange} />
         <label>
           Depart
           <input
@@ -84,22 +78,36 @@ export function TripPlanner({
         <a className="booking-card primary" href={flights} target="_blank" rel="noreferrer">
           <span>Cheapest round trip</span>
           <strong>Google Flights</strong>
-          <small>Opens sorted search to {country.capital}</small>
+          <small>
+            {from ?? 'Your airport'} → {to} · {depart} to {returnDate}
+          </small>
         </a>
         <a className="booking-card" href={explore} target="_blank" rel="noreferrer">
           <span>Flexible dates</span>
           <strong>Explore calendar</strong>
-          <small>Find the cheapest month</small>
+          <small>Skyscanner cheapest month {from ? `${from} → ${to}` : `to ${to}`}</small>
         </a>
-        <a className="booking-card" href={hotels} target="_blank" rel="noreferrer">
+        <div className="booking-card">
           <span>Stay</span>
-          <strong>Hotels</strong>
-          <small>Check-in {depart}</small>
-        </a>
+          <strong>Cheap hotels</strong>
+          <small>
+            {country.capital} · {depart} to {returnDate}
+          </small>
+          <div className="booking-actions">
+            <a href={priceline} target="_blank" rel="noreferrer">
+              Priceline
+            </a>
+            <a href={booking} target="_blank" rel="noreferrer">
+              Booking.com
+            </a>
+          </div>
+        </div>
         <a className="booking-card" href={cars} target="_blank" rel="noreferrer">
           <span>Get around</span>
           <strong>Rental car</strong>
-          <small>Pickup in {country.capital}</small>
+          <small>
+            Kayak pickup in {to} · {depart} to {returnDate}
+          </small>
         </a>
       </div>
     </section>
